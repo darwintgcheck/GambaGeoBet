@@ -20,7 +20,7 @@ export default function TokenSelect() {
     <div style={{ position: 'relative' }}>
       <GambaUi.Button>
         <StyledToken>
-          💰 Balans: ₾ {balance}
+           ₾ {balance}
         </StyledToken>
       </GambaUi.Button>
     </div>
