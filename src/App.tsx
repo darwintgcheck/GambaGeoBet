@@ -15,6 +15,7 @@ import RecentPlays from './sections/RecentPlays/RecentPlays'
 import Toasts from './sections/Toasts'
 import { MainWrapper } from './styles'
 import TrollBox from './components/TrollBox'
+import AuthModal from './components/AuthModal'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -50,122 +51,17 @@ function ErrorHandler() {
 }
 
 export default function App() {
-  const newcomer = useUserStore((state) => state.newcomer)
+  const user = useUserStore((state) => state.user)
   const setUser = useUserStore((state) => state.setUser)
 
   // დეპოზიტი და გამოტანა modal-ების state
   const [depositOpen, setDepositOpen] = React.useState(false)
   const [withdrawOpen, setWithdrawOpen] = React.useState(false)
 
-  // form state (რეგისტრაციისთვის)
-  const [form, setForm] = React.useState({
-    username: '',
-    displayName: '',
-    phone: '',
-    passport: '',
-    password: '',
-    age: '',
-    dob: '',
-  })
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setForm((prev) => ({ ...prev, [name]: value }))
-  }
-
-  const handleSubmit = () => {
-    if (
-      !form.username ||
-      !form.displayName ||
-      !form.phone ||
-      !form.passport ||
-      !form.password ||
-      !form.age ||
-      !form.dob
-    ) {
-      alert('გთხოვთ, შეავსოთ ყველა ველი')
-      return
-    }
-
-    const ageNum = parseInt(form.age, 10)
-
-    setUser({
-      username: form.username,
-      displayName: form.displayName,
-      phone: form.phone,
-      passport: form.passport,
-      password: form.password,
-      age: ageNum,
-      dob: form.dob,
-      balance: 200, // ახალი მომხმარებელს ავტომატურად ემატება 200 ლარი
-    })
-    setDepositOpen(false)
-  }
-
   return (
     <>
-      {/* რეგისტრაცია */}
-      {newcomer && (
-        <Modal>
-          <h1>რეგისტრაცია</h1>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '280px' }}>
-            <input
-              type="text"
-              name="username"
-              placeholder="მომხმარებლის სახელი"
-              value={form.username}
-              onChange={handleChange}
-            />
-            <input
-              type="text"
-              name="displayName"
-              placeholder="სახელი და გვარი"
-              value={form.displayName}
-              onChange={handleChange}
-            />
-            <input
-              type="tel"
-              name="phone"
-              placeholder="ტელეფონის ნომერი"
-              value={form.phone}
-              onChange={handleChange}
-            />
-            <input
-              type="text"
-              name="passport"
-              placeholder="პასპორტის ნომერი"
-              value={form.passport}
-              onChange={handleChange}
-            />
-            <input
-              type="password"
-              name="password"
-              placeholder="პაროლი (11 ციფრი)"
-              value={form.password}
-              onChange={handleChange}
-              maxLength={11}
-            />
-            <input
-              type="number"
-              name="age"
-              placeholder="ასაკი"
-              value={form.age}
-              onChange={handleChange}
-            />
-            <input
-              type="date"
-              name="dob"
-              placeholder="დაბადების თარიღი"
-              value={form.dob}
-              onChange={handleChange}
-            />
-
-            <GambaUi.Button main onClick={handleSubmit}>
-              რეგისტრაცია
-            </GambaUi.Button>
-          </div>
-        </Modal>
-      )}
+      {/* თუ მომხმარებელი არ არის ავტორიზებული → ვაჩვენოთ Login/Register */}
+      {!user && <AuthModal />}
 
       {/* დეპოზიტის Modal */}
       {depositOpen && (
