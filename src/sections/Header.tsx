@@ -141,7 +141,7 @@ export default function Header({ openDeposit, openWithdraw }: { openDeposit?: ()
           <GambaUi.Button onClick={openDeposit}>დეპოზიტი</GambaUi.Button>
           <GambaUi.Button onClick={openWithdraw}>გამოტანა</GambaUi.Button>
 
-          <TokenSelect />
+          
           <UserButton />
         </div>
       </StyledHeader>
