@@ -1,36 +1,44 @@
-import { StoreApi, create } from "zustand"
-import { createJSONStorage, persist } from "zustand/middleware"
+// src/hooks/useUserStore.ts
+import { StoreApi, create } from 'zustand'
+import { createJSONStorage, persist } from 'zustand/middleware'
 
 export interface UserStore {
-  user: {
-    username: string
-    password: string
-    name: string
-    surname: string
-    phone: string
-    passport: string
-    age: string
-    dob: string
-    balance: number
-  } | null
-
+  newcomer: boolean
+  userModal: boolean
   gamesPlayed: Array<string>
   lastSelectedPool: { token: string; authority?: string } | null
 
+  username?: string
+  displayName?: string
+  phone?: string
+  passport?: string
+  age?: number
+  birthday?: string
+  balance: number
+
   markGameAsPlayed: (gameId: string, played: boolean) => void
-  setUser: (user: UserStore["user"]) => void
+  setUser: (data: {
+    username: string
+    displayName: string
+    phone: string
+    passport: string
+    age: number
+    birthday: string
+  }) => void
   addBalance: (amount: number) => void
   withdrawBalance: (amount: number) => boolean
   logout: () => void
-  set: StoreApi<UserStore>["setState"]
+  set: StoreApi<UserStore>['setState']
 }
 
 export const useUserStore = create(
   persist<UserStore>(
     (set, get) => ({
-      user: JSON.parse(localStorage.getItem("currentUser") || "null"),
+      newcomer: true,
+      userModal: false,
       lastSelectedPool: null,
       gamesPlayed: [],
+      balance: 0, // ilkin olaraq 0, qeydiyyatda 200 olacaq
 
       markGameAsPlayed: (gameId, played) => {
         const gamesPlayed = new Set(get().gamesPlayed)
@@ -42,42 +50,50 @@ export const useUserStore = create(
         set({ gamesPlayed: Array.from(gamesPlayed) })
       },
 
-      setUser: (user) => {
-        if (!user) return
-        localStorage.setItem("currentUser", JSON.stringify(user))
-        set({ user })
+      setUser: (data) => {
+        set({
+          username: data.username,
+          displayName: data.displayName,
+          phone: data.phone,
+          passport: data.passport,
+          age: data.age,
+          birthday: data.birthday,
+          newcomer: false,
+          balance: 200, // 🎁 qeydiyyatda avtomatik 200 ₾
+        })
       },
 
       addBalance: (amount) => {
-        const user = get().user
-        if (user) {
-          const updated = { ...user, balance: user.balance + amount }
-          localStorage.setItem("currentUser", JSON.stringify(updated))
-          set({ user: updated })
-        }
+        set({ balance: get().balance + amount })
       },
 
       withdrawBalance: (amount) => {
-        const user = get().user
-        if (user && user.balance >= amount) {
-          const updated = { ...user, balance: user.balance - amount }
-          localStorage.setItem("currentUser", JSON.stringify(updated))
-          set({ user: updated })
+        const state = get()
+        if (state.balance >= amount) {
+          set({ balance: state.balance - amount })
           return true
         }
         return false
       },
 
       logout: () => {
-        localStorage.removeItem("currentUser")
-        set({ user: null })
+        set({
+          username: undefined,
+          displayName: undefined,
+          phone: undefined,
+          passport: undefined,
+          age: undefined,
+          birthday: undefined,
+          balance: 0,
+          newcomer: true,
+        })
       },
 
       set,
     }),
     {
-      name: "user",
+      name: 'user',
       storage: createJSONStorage(() => window.localStorage),
-    }
-  )
+    },
+  ),
 )
