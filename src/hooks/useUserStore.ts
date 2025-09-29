@@ -37,7 +37,7 @@ export const useUserStore = create(
       userModal: false,
       lastSelectedPool: null,
       gamesPlayed: [],
-      balance: 0,
+      balance: 200,
 
       markGameAsPlayed: (gameId, played) => {
         const gamesPlayed = new Set(get().gamesPlayed)
