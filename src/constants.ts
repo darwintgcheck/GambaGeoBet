@@ -43,7 +43,6 @@ const lp = (
  * İndi yalnız real balans `useUserStore`-dan idarə ediləcək.
  */
 export const POOLS = [
-  // Əgər istəyirsənsə SOL və ya USDC qalsın, saxla. Əks halda tam sil.
   lp('So11111111111111111111111111111111111111112'), // SOL
   lp('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'), // USDC
 ]
@@ -67,6 +66,9 @@ export const TOKEN_METADATA: (Partial<TokenMeta> & { mint: PublicKey })[] = [
     baseWager: 1,
     decimals: 0,
     usdPrice: 0,
+
+    // 👇 əlavə etdik ki, başlanğıc balans 200 ₾ görünsün
+    balance: 200,
   },
 ]
 
