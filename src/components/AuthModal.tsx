@@ -1,7 +1,7 @@
 // src/components/AuthModal.tsx
 import React, { useState } from 'react'
 import styled from 'styled-components'
-import { useUserStore } from '../store/useUserStore'
+import { useUserStore } from '../hooks/useUserStore'
 
 const Overlay = styled.div`
   position: fixed;
