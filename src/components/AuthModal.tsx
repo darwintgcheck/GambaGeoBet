@@ -9,13 +9,16 @@ const Input = styled.input`
   border: 2px solid #ffd700;
   border-radius: 8px;
   background: black;
-  color: #fff;
+  color: #ffffff;  /* Yazı tam ağ olacaq */
   font-size: 16px;
   font-weight: bold;
   outline: none;
-  text-shadow: 0 0 5px #fff, 0 0 10px #ffd700;
+
+  /* Neon effekt yalnız border-də olsun */
+  box-shadow: 0 0 8px #ffd700, 0 0 16px #ffae00;
+
   &::placeholder {
-    color: #999;
+    color: #aaaaaa;
   }
 `
 
