@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import styled from 'styled-components'
 import { Modal } from './Modal'
 import { GambaUi } from 'gamba-react-ui-v2'
-import { useUserStore } from '../store/useUserStore'
+import { useUserStore } from '../hooks/useUserStore'
 
 const Input = styled.input`
   padding: 10px;
