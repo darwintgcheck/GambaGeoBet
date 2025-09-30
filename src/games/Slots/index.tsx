@@ -1,6 +1,5 @@
-import { GameResult } from 'gamba-core-v2'
-import { EffectTest, GambaUi, TokenValue, useCurrentPool, useSound, useWagerInput } from 'gamba-react-ui-v2'
 import React, { useEffect, useRef } from 'react'
+import { useSound } from 'gamba-react-ui-v2'
 import { ItemPreview } from './ItemPreview'
 import { Slot } from './Slot'
 import { StyledSlots } from './Slots.styles'
@@ -19,7 +18,8 @@ import {
   SPIN_DELAY,
   SlotItem,
 } from './constants'
-import { generateBetArray, getSlotCombination } from './utils'
+import { getSlotCombination } from './utils'
+import { useUserStore } from '../hooks/useUserStore'
 
 function Messages({ messages }: {messages: string[]}) {
   const [messageIndex, setMessageIndex] = React.useState(0)
@@ -40,14 +40,12 @@ function Messages({ messages }: {messages: string[]}) {
 }
 
 export default function Slots() {
-  const gamba = GambaUi.useGame()
-  const game = GambaUi.useGame()
-  const pool = useCurrentPool()
+  const { balance, updateBalance } = useUserStore()
   const [spinning, setSpinning] = React.useState(false)
-  const [result, setResult] = React.useState<GameResult>()
+  const [result, setResult] = React.useState<number | null>(null)
   const [good, setGood] = React.useState(false)
   const [revealedSlots, setRevealedSlots] = React.useState(NUM_SLOTS)
-  const [wager, setWager] = useWagerInput()
+  const [wager, setWager] = React.useState(0)
   const [combination, setCombination] = React.useState(
     Array.from({ length: NUM_SLOTS }).map(() => SLOT_ITEMS[0]),
   )
@@ -59,17 +57,10 @@ export default function Slots() {
     spin: SOUND_SPIN,
     play: SOUND_PLAY,
   })
-  const bet = React.useMemo(
-    () => generateBetArray(pool.maxPayout, wager),
-    [pool.maxPayout, wager],
-  )
   const timeout = useRef<any>()
-
-  const isValid = bet.some((x) => x > 1)
 
   useEffect(
     () => {
-      // Clear timeout when user leaves
       return () => {
         timeout.current && clearTimeout(timeout.current)
       }
@@ -91,13 +82,11 @@ export default function Slots() {
     setRevealedSlots(slot + 1)
 
     if (slot < NUM_SLOTS - 1) {
-      // Reveal next slot
       timeout.current = setTimeout(
         () => revealSlot(combination, slot + 1),
         REVEAL_SLOT_DELAY,
       )
     } else if (slot === NUM_SLOTS - 1) {
-      // Show final results
       sounds.sounds.spin.player.stop()
       timeout.current = setTimeout(() => {
         setSpinning(false)
@@ -112,99 +101,90 @@ export default function Slots() {
   }
 
   const play = async () => {
-    try {
-      setSpinning(true)
-      setResult(undefined)
-
-      await game.play({
-        wager,
-        bet,
-      })
-
-      sounds.play('play')
-
-      setRevealedSlots(0)
-      setGood(false)
-
-      const startTime = Date.now()
-
-      sounds.play('spin', { playbackRate: .5 })
-
-      const result = await gamba.result()
-
-      // Make sure we wait a minimum time of SPIN_DELAY before slots are revealed:
-      const resultDelay = Date.now() - startTime
-      const revealDelay = Math.max(0, SPIN_DELAY - resultDelay)
-
-      const combination = getSlotCombination(NUM_SLOTS, result.multiplier, bet)
-
-      setCombination(combination)
-
-      setResult(result)
-
-      timeout.current = setTimeout(() => revealSlot(combination), revealDelay)
-    } catch (err) {
-      // Reset if there's an error
-      setSpinning(false)
-      setRevealedSlots(NUM_SLOTS)
-      throw err
+    if (balance < wager) {
+      alert("Balans kifayət deyil!")
+      return
     }
+
+    setSpinning(true)
+    setResult(null)
+    updateBalance(balance - wager)
+
+    sounds.play('play')
+    setRevealedSlots(0)
+    setGood(false)
+
+    const startTime = Date.now()
+    sounds.play('spin', { playbackRate: .5 })
+
+    const randomMultiplier = [0, 0, 2, 5, 10][Math.floor(Math.random() * 5)]
+    const payout = wager * randomMultiplier
+
+    const resultDelay = Date.now() - startTime
+    const revealDelay = Math.max(0, SPIN_DELAY - resultDelay)
+
+    const combination = getSlotCombination(NUM_SLOTS, randomMultiplier, Array(NUM_SLOTS).fill(1))
+    setCombination(combination)
+    setResult(payout)
+
+    timeout.current = setTimeout(() => {
+      revealSlot(combination)
+      if (payout > 0) {
+        updateBalance(balance - wager + payout)
+      }
+    }, revealDelay)
   }
 
   return (
     <>
-      <GambaUi.Portal target="screen">
-        {good && <EffectTest src={combination[0].image} />}
-        <GambaUi.Responsive>
-          <StyledSlots>
-            <div>
-              <ItemPreview betArray={bet} />
-              <div className={'slots'}>
-                {combination.map((slot, i) => (
-                  <Slot
-                    key={i}
-                    index={i}
-                    revealed={revealedSlots > i}
-                    item={slot}
-                    good={good}
-                  />
-                ))}
-              </div>
-              <div className="result" data-good={good}>
-                {spinning ? (
-                  <Messages
-                    messages={[
-                      'Spinning!',
-                      'Good luck',
-                    ]}
-                  />
-                ) : result ? (
-                  <>
-                    Payout: <TokenValue mint={result.token} amount={result.payout} />
-                  </>
-                ) : isValid ? (
-                  <Messages
-                    messages={[
-                      'SPIN ME!',
-                      'FEELING LUCKY?',
-                    ]}
-                  />
-                ) : (
-                  <>
-                    ❌ Choose a lower wager!
-                  </>
-                )}
-              </div>
-            </div>
-          </StyledSlots>
-        </GambaUi.Responsive>
-      </GambaUi.Portal>
-      <GambaUi.Portal target="controls">
-        <GambaUi.WagerInput value={wager} onChange={setWager} />
-        <GambaUi.PlayButton disabled={!isValid} onClick={play}>
+      <StyledSlots>
+        <div>
+          <ItemPreview betArray={Array(NUM_SLOTS).fill(1)} />
+          <div className={'slots'}>
+            {combination.map((slot, i) => (
+              <Slot
+                key={i}
+                index={i}
+                revealed={revealedSlots > i}
+                item={slot}
+                good={good}
+              />
+            ))}
+          </div>
+          <div className="result" data-good={good}>
+            {spinning ? (
+              <Messages
+                messages={[
+                  'Spinning!',
+                  'Good luck',
+                ]}
+              />
+            ) : result !== null ? (
+              <>
+                Payout: {result}
+              </>
+            ) : (
+              <Messages
+                messages={[
+                  'SPIN ME!',
+                  'FEELING LUCKY?',
+                ]}
+              />
+            )}
+          </div>
+        </div>
+      </StyledSlots>
+      <div style={{ marginTop: 20 }}>
+        <input
+          type="number"
+          value={wager}
+          onChange={(e) => setWager(Number(e.target.value))}
+          placeholder="Məbləği daxil et"
+        />
+        <button disabled={!wager || spinning} onClick={play}>
           Spin
-        </GambaUi.PlayButton>
-      </GambaUi.Portal>
+        </button>
+      </div>
     </>
   )
 }
