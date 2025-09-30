@@ -1,8 +1,7 @@
-// src/sections/TokenSelect.tsx
-import React from 'react'
-import { GambaUi } from 'gamba-react-ui-v2'
-import styled from 'styled-components'
-import { useUserStore } from '../hooks/useUserStore'
+import React from "react"
+import { GambaUi } from "gamba-react-ui-v2"
+import styled from "styled-components"
+import { useUserStore } from "../hooks/useUserStore"
 
 const StyledToken = styled.div`
   display: flex;
@@ -14,14 +13,12 @@ const StyledToken = styled.div`
 `
 
 export default function TokenSelect() {
-  const { balance } = useUserStore()
+  const user = useUserStore((state) => state.user)
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: "relative" }}>
       <GambaUi.Button>
-        <StyledToken>
-           ₾ {balance}
-        </StyledToken>
+        <StyledToken>₾ {user?.balance ?? 0}</StyledToken>
       </GambaUi.Button>
     </div>
   )
