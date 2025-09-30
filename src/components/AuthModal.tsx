@@ -1,3 +1,4 @@
+// src/components/AuthModal.tsx
 import React, { useState } from "react"
 import styled from "styled-components"
 
@@ -19,15 +20,22 @@ const ModalBox = styled.div`
   border: 2px solid gold;
   padding: 30px;
   border-radius: 15px;
-  width: 350px;
+  width: 380px;
   text-align: center;
   color: white;
   font-family: "Arial", sans-serif;
+  box-shadow: 0 0 25px rgba(255, 215, 0, 0.4);
+`
+
+const Title = styled.h2`
+  color: gold;
+  margin-bottom: 20px;
+  text-shadow: 0 0 10px gold, 0 0 20px #ffcc00;
 `
 
 const Input = styled.input`
   width: 100%;
-  padding: 10px;
+  padding: 12px;
   margin: 8px 0;
   background: black;
   border: 1px solid gold;
@@ -35,15 +43,16 @@ const Input = styled.input`
   color: #fff;
   font-size: 16px;
   text-align: center;
+  text-shadow: 0 0 8px #fff, 0 0 15px #ffcc00;
   &:focus {
     outline: none;
-    box-shadow: 0 0 10px gold;
+    box-shadow: 0 0 15px gold;
   }
 `
 
 const Button = styled.button`
   width: 100%;
-  padding: 12px;
+  padding: 14px;
   margin-top: 12px;
   background: gold;
   color: black;
@@ -52,8 +61,10 @@ const Button = styled.button`
   border-radius: 8px;
   cursor: pointer;
   transition: 0.2s;
+  font-size: 16px;
   &:hover {
     background: #ffcc00;
+    box-shadow: 0 0 15px gold;
   }
 `
 
@@ -64,6 +75,7 @@ const SwitchText = styled.p`
   cursor: pointer;
   &:hover {
     color: gold;
+    text-shadow: 0 0 8px gold;
   }
 `
 
@@ -90,7 +102,6 @@ export default function AuthModal({ onLogin }: { onLogin: (username: string) => 
 
     const users = JSON.parse(localStorage.getItem("users") || "[]")
 
-    // mövcud istifadəçi var?
     if (users.find((u: any) => u.username === username)) {
       setMessage("ეს მომხმარებელი უკვე არსებობს!")
       return
@@ -105,7 +116,7 @@ export default function AuthModal({ onLogin }: { onLogin: (username: string) => 
       passport,
       age,
       birth,
-      balance: 200, // qeydiyyat bonusu
+      balance: 200, // 🎁 qeydiyyat bonusu
     }
 
     users.push(newUser)
@@ -130,7 +141,7 @@ export default function AuthModal({ onLogin }: { onLogin: (username: string) => 
   return (
     <ModalBackground>
       <ModalBox>
-        <h2>{isLogin ? "ავტორიზაცია" : "რეგისტრაცია"}</h2>
+        <Title>{isLogin ? "ავტორიზაცია" : "რეგისტრაცია"}</Title>
 
         <Input
           placeholder="მომხმარებელი"
