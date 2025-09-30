@@ -1,19 +1,33 @@
-import { GambaUi, useSound, useWagerInput } from 'gamba-react-ui-v2'
 import React from 'react'
+import { useUserStore } from '../hooks/useUserStore'
 import CustomSlider from './Slider'
 import CRASH_SOUND from './crash.mp3'
 import SOUND from './music.mp3'
-import { LineLayer1, LineLayer2, LineLayer3, MultiplierText, Rocket, ScreenWrapper, StarsLayer1, StarsLayer2, StarsLayer3 } from './styles'
-import { calculateBetArray } from './utils'
 import WIN_SOUND from './win.mp3'
+import {
+  LineLayer1,
+  LineLayer2,
+  LineLayer3,
+  MultiplierText,
+  Rocket,
+  ScreenWrapper,
+  StarsLayer1,
+  StarsLayer2,
+  StarsLayer3,
+} from './styles'
 
 export default function CrashGame() {
-  const [wager, setWager] = useWagerInput()
+  const { balance, withdrawBalance, addBalance } = useUserStore()
+  const [wager, setWager] = React.useState(0)
   const [multiplierTarget, setMultiplierTarget] = React.useState(1.5)
   const [currentMultiplier, setCurrentMultiplier] = React.useState(0)
   const [rocketState, setRocketState] = React.useState<'idle' | 'win' | 'crash'>('idle')
-  const game = GambaUi.useGame()
-  const sound = useSound({ music: SOUND, crash: CRASH_SOUND, win: WIN_SOUND })
+
+  // Sadə audio controller
+  const playSound = (src: string) => {
+    const audio = new Audio(src)
+    audio.play()
+  }
 
   const getRocketStyle = () => {
     const maxMultiplier = 1
@@ -45,8 +59,7 @@ export default function CrashGame() {
     setCurrentMultiplier(nextValue)
 
     if (nextValue >= targetMultiplier) {
-      sound.sounds.music.player.stop()
-      sound.play(win ? 'win' : 'crash')
+      playSound(win ? WIN_SOUND : CRASH_SOUND)
       setRocketState(win ? 'win' : 'crash')
       setCurrentMultiplier(targetMultiplier)
       return
@@ -55,15 +68,12 @@ export default function CrashGame() {
     setTimeout(() => doTheIntervalThing(nextValue, targetMultiplier, win), 50)
   }
 
-  const multiplierColor = (
-    () => {
-      if (rocketState === 'crash') return '#ff0000'
-      if (rocketState === 'win') return '#00ff00'
-      return '#ffffff'
-    }
-  )()
+  const multiplierColor =
+    rocketState === 'crash' ? '#ff0000' :
+    rocketState === 'win' ? '#00ff00' :
+    '#ffffff'
 
-  //Kinda realistic losing number chooser
+  // Məğlub olma ehtimalını hesablamaq
   const calculateBiasedLowMultiplier = (targetMultiplier: number) => {
     const randomValue = Math.random()
     const maxPossibleMultiplier = Math.min(targetMultiplier, 12)
@@ -72,26 +82,34 @@ export default function CrashGame() {
     return parseFloat(result.toFixed(2))
   }
 
-
   const play = async () => {
-    setRocketState('idle')
-    const bet = calculateBetArray(multiplierTarget)
-    await game.play({ wager, bet })
+    if (wager <= 0 || wager > balance) {
+      alert("Balans kifayət deyil!")
+      return
+    }
 
-    const result = await game.result()
-    const win = result.payout > 0
+    // Mərc çıxılır
+    withdrawBalance(wager)
+
+    setRocketState('idle')
+    playSound(SOUND)
+
+    // Qazanc olub-olmamasını random təyin edirik
+    const win = Math.random() > 0.5
     const multiplierResult = win ? multiplierTarget : calculateBiasedLowMultiplier(multiplierTarget)
 
-    console.log('multiplierResult', multiplierResult)
-    console.log('win', win)
-
-    sound.play('music')
     doTheIntervalThing(0, multiplierResult, win)
+
+    // Əgər udursa → uduş əlavə olunur
+    if (win) {
+      addBalance(wager * multiplierTarget)
+    }
   }
 
   return (
     <>
-      <GambaUi.Portal target="screen">
+      {/* Oyun ekranı */}
+      <div>
         <ScreenWrapper>
           <StarsLayer1 style={{ opacity: currentMultiplier > 3 ? 0 : 1 }} />
           <LineLayer1 style={{ opacity: currentMultiplier > 3 ? 1 : 0 }} />
@@ -104,17 +122,22 @@ export default function CrashGame() {
           </MultiplierText>
           <Rocket style={getRocketStyle()} />
         </ScreenWrapper>
-      </GambaUi.Portal>
-      <GambaUi.Portal target="controls">
-        <GambaUi.WagerInput value={wager} onChange={setWager} />
+      </div>
+
+      {/* İdarəetmə paneli */}
+      <div style={{ marginTop: 20 }}>
+        <input
+          type="number"
+          value={wager}
+          onChange={(e) => setWager(Number(e.target.value))}
+          placeholder="Mərc məbləği"
+        />
         <CustomSlider
           value={multiplierTarget}
           onChange={setMultiplierTarget}
         />
-        <GambaUi.PlayButton onClick={play}>
-          Play
-        </GambaUi.PlayButton>
-      </GambaUi.Portal>
+        <button onClick={play}>Play</button>
+      </div>
     </>
   )
 }
