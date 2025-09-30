@@ -91,12 +91,13 @@ export default function AuthModal({ onLogin }: { onLogin: (username: string) => 
   const [passport, setPassport] = useState("")
   const [age, setAge] = useState("")
 
+  // ✅ Register
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault()
 
     const users = JSON.parse(localStorage.getItem("users") || "[]")
 
-    if (!username || !password || !name || !phone || !passport || !age) {
+    if (!username || !password || !name || !passport || !phone || !age) {
       alert("ყველა ველი უნდა შეავსოთ")
       return
     }
@@ -106,6 +107,7 @@ export default function AuthModal({ onLogin }: { onLogin: (username: string) => 
       return
     }
 
+    // Yeni istifadəçi bonusla yaradılır
     const newUser = {
       username,
       password,
@@ -113,21 +115,23 @@ export default function AuthModal({ onLogin }: { onLogin: (username: string) => 
       phone,
       passport,
       age,
-      balance: 200, // ახალ ანგარიშზე 200 ლარი
+      balance: 200, // ✅ პირველი რეგისტრაციაზე 200₾ ბონუსი
     }
 
     users.push(newUser)
     localStorage.setItem("users", JSON.stringify(users))
     localStorage.setItem("currentUser", JSON.stringify(newUser))
     onLogin(username)
+    alert("რეგისტრაცია წარმატებით დასრულდა! 🎉 ბონუსი: 200₾")
   }
 
+  // ✅ Login
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
 
     const users = JSON.parse(localStorage.getItem("users") || "[]")
     const user = users.find(
-      (u: any) => u.username === username && u.password === password
+      (u: any) => u.username === username && u.password === password,
     )
 
     if (user) {
@@ -144,7 +148,6 @@ export default function AuthModal({ onLogin }: { onLogin: (username: string) => 
         <Title>{isRegister ? "რეგისტრაცია ✨" : "შესვლა 🔑"}</Title>
 
         <form onSubmit={isRegister ? handleRegister : handleLogin}>
-          {/* საერთო sahələr */}
           <Input
             type="text"
             placeholder="მომხმარებლის სახელი"
@@ -158,13 +161,32 @@ export default function AuthModal({ onLogin }: { onLogin: (username: string) => 
             onChange={(e) => setPassword(e.target.value)}
           />
 
-          {/* მხოლოდ რეგისტრაციისას */}
           {isRegister && (
             <>
-              <Input type="text" placeholder="სახელი" value={name} onChange={(e) => setName(e.target.value)} />
-              <Input type="text" placeholder="ტელეფონის ნომერი" value={phone} onChange={(e) => setPhone(e.target.value)} />
-              <Input type="text" placeholder="პასპორტის კოდი" value={passport} onChange={(e) => setPassport(e.target.value)} />
-              <Input type="number" placeholder="ასაკი" value={age} onChange={(e) => setAge(e.target.value)} />
+              <Input
+                type="text"
+                placeholder="სახელი"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+              <Input
+                type="text"
+                placeholder="ტელეფონის ნომერი"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+              <Input
+                type="text"
+                placeholder="პასპორტის კოდი"
+                value={passport}
+                onChange={(e) => setPassport(e.target.value)}
+              />
+              <Input
+                type="number"
+                placeholder="ასაკი"
+                value={age}
+                onChange={(e) => setAge(e.target.value)}
+              />
             </>
           )}
 
