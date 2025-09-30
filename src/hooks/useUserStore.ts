@@ -1,4 +1,3 @@
-// src/hooks/useUserStore.ts
 import { StoreApi, create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 
@@ -9,25 +8,29 @@ export interface UserStore {
   lastSelectedPool: { token: string; authority?: string } | null
 
   username?: string
+  password?: string   // 🔑 პაროლი
   displayName?: string
   phone?: string
   passport?: string
   age?: number
   birthday?: string
-  balance: number
+
+  balance: number // 💰 ლარში
 
   markGameAsPlayed: (gameId: string, played: boolean) => void
   setUser: (data: {
     username: string
+    password: string
     displayName: string
     phone: string
     passport: string
     age: number
     birthday: string
   }) => void
+  login: (username: string, password: string) => boolean
+  logout: () => void
   addBalance: (amount: number) => void
   withdrawBalance: (amount: number) => boolean
-  logout: () => void
   set: StoreApi<UserStore>['setState']
 }
 
@@ -38,7 +41,7 @@ export const useUserStore = create(
       userModal: false,
       lastSelectedPool: null,
       gamesPlayed: [],
-      balance: 0, // ilkin olaraq 0, qeydiyyatda 200 olacaq
+      balance: 0,
 
       markGameAsPlayed: (gameId, played) => {
         const gamesPlayed = new Set(get().gamesPlayed)
@@ -50,16 +53,44 @@ export const useUserStore = create(
         set({ gamesPlayed: Array.from(gamesPlayed) })
       },
 
+      // ✅ რეგისტრაცია
       setUser: (data) => {
         set({
           username: data.username,
+          password: data.password,
           displayName: data.displayName,
           phone: data.phone,
           passport: data.passport,
           age: data.age,
           birthday: data.birthday,
           newcomer: false,
-          balance: 200, // 🎁 qeydiyyatda avtomatik 200 ₾
+          balance: 200, // 🎁 საწყისი ბალანსი
+        })
+      },
+
+      // ✅ ლოგინი
+      login: (username, password) => {
+        const state = get()
+        if (state.username === username && state.password === password) {
+          set({ newcomer: false, userModal: false })
+          return true
+        }
+        return false
+      },
+
+      // ✅ ლოგაუთი
+      logout: () => {
+        set({
+          username: undefined,
+          password: undefined,
+          displayName: undefined,
+          phone: undefined,
+          passport: undefined,
+          age: undefined,
+          birthday: undefined,
+          balance: 0,
+          newcomer: true,
+          userModal: true,
         })
       },
 
@@ -74,19 +105,6 @@ export const useUserStore = create(
           return true
         }
         return false
-      },
-
-      logout: () => {
-        set({
-          username: undefined,
-          displayName: undefined,
-          phone: undefined,
-          passport: undefined,
-          age: undefined,
-          birthday: undefined,
-          balance: 0,
-          newcomer: true,
-        })
       },
 
       set,
