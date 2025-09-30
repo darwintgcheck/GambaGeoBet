@@ -1,5 +1,16 @@
-import { StoreApi, create } from 'zustand'
-import { createJSONStorage, persist } from 'zustand/middleware'
+import { StoreApi, create } from "zustand"
+import { createJSONStorage, persist } from "zustand/middleware"
+
+export interface User {
+  username: string
+  password: string
+  displayName: string
+  phone: string
+  passport: string
+  age: number
+  birthday: string
+  balance: number
+}
 
 export interface UserStore {
   newcomer: boolean
@@ -7,31 +18,16 @@ export interface UserStore {
   gamesPlayed: Array<string>
   lastSelectedPool: { token: string; authority?: string } | null
 
-  username?: string
-  password?: string   // 🔑 პაროლი
-  displayName?: string
-  phone?: string
-  passport?: string
-  age?: number
-  birthday?: string
-
-  balance: number // 💰 ლარში
+  currentUser?: User | null
+  users: User[]
 
   markGameAsPlayed: (gameId: string, played: boolean) => void
-  setUser: (data: {
-    username: string
-    password: string
-    displayName: string
-    phone: string
-    passport: string
-    age: number
-    birthday: string
-  }) => void
+  register: (data: Omit<User, "balance">) => boolean
   login: (username: string, password: string) => boolean
   logout: () => void
   addBalance: (amount: number) => void
   withdrawBalance: (amount: number) => boolean
-  set: StoreApi<UserStore>['setState']
+  set: StoreApi<UserStore>["setState"]
 }
 
 export const useUserStore = create(
@@ -41,7 +37,8 @@ export const useUserStore = create(
       userModal: false,
       lastSelectedPool: null,
       gamesPlayed: [],
-      balance: 0,
+      users: [],
+      currentUser: null,
 
       markGameAsPlayed: (gameId, played) => {
         const gamesPlayed = new Set(get().gamesPlayed)
@@ -53,26 +50,37 @@ export const useUserStore = create(
         set({ gamesPlayed: Array.from(gamesPlayed) })
       },
 
-      // ✅ რეგისტრაცია
-      setUser: (data) => {
+      // ✅ რეგისტრაცია — yeni hesab yaradılır
+      register: (data) => {
+        const users = [...get().users]
+
+        if (users.find((u) => u.username === data.username)) {
+          return false // artıq არსებობს
+        }
+
+        const newUser: User = {
+          ...data,
+          balance: 200, // 🎁 საწყისი ბონუსი
+        }
+
+        users.push(newUser)
         set({
-          username: data.username,
-          password: data.password,
-          displayName: data.displayName,
-          phone: data.phone,
-          passport: data.passport,
-          age: data.age,
-          birthday: data.birthday,
+          users,
+          currentUser: newUser,
           newcomer: false,
-          balance: 200, // 🎁 საწყისი ბალანსი
+          userModal: false,
         })
+        return true
       },
 
       // ✅ ლოგინი
       login: (username, password) => {
-        const state = get()
-        if (state.username === username && state.password === password) {
-          set({ newcomer: false, userModal: false })
+        const users = get().users
+        const user = users.find(
+          (u) => u.username === username && u.password === password,
+        )
+        if (user) {
+          set({ currentUser: user, newcomer: false, userModal: false })
           return true
         }
         return false
@@ -81,27 +89,37 @@ export const useUserStore = create(
       // ✅ ლოგაუთი
       logout: () => {
         set({
-          username: undefined,
-          password: undefined,
-          displayName: undefined,
-          phone: undefined,
-          passport: undefined,
-          age: undefined,
-          birthday: undefined,
-          balance: 0,
+          currentUser: null,
           newcomer: true,
           userModal: true,
         })
       },
 
+      // ✅ ბალანსის დამატება
       addBalance: (amount) => {
-        set({ balance: get().balance + amount })
+        const { currentUser, users } = get()
+        if (!currentUser) return
+
+        const updatedUser = { ...currentUser, balance: currentUser.balance + amount }
+        const updatedUsers = users.map((u) =>
+          u.username === currentUser.username ? updatedUser : u,
+        )
+
+        set({ currentUser: updatedUser, users: updatedUsers })
       },
 
+      // ✅ ბალანსის გამოტანა
       withdrawBalance: (amount) => {
-        const state = get()
-        if (state.balance >= amount) {
-          set({ balance: state.balance - amount })
+        const { currentUser, users } = get()
+        if (!currentUser) return false
+
+        if (currentUser.balance >= amount) {
+          const updatedUser = { ...currentUser, balance: currentUser.balance - amount }
+          const updatedUsers = users.map((u) =>
+            u.username === currentUser.username ? updatedUser : u,
+          )
+
+          set({ currentUser: updatedUser, users: updatedUsers })
           return true
         }
         return false
@@ -110,7 +128,7 @@ export const useUserStore = create(
       set,
     }),
     {
-      name: 'user',
+      name: "user-storage",
       storage: createJSONStorage(() => window.localStorage),
     },
   ),
