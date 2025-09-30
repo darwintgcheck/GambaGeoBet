@@ -87,18 +87,16 @@ export default function AuthModal({ onLogin }: { onLogin: (username: string) => 
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [name, setName] = useState("")
-  const [surname, setSurname] = useState("")
   const [phone, setPhone] = useState("")
   const [passport, setPassport] = useState("")
   const [age, setAge] = useState("")
-  const [birth, setBirth] = useState("")
 
   const handleRegister = (e: React.FormEvent) => {
-    e.preventDefault() // səhifənin yenilənməsinin qarşısını alır
+    e.preventDefault()
 
     const users = JSON.parse(localStorage.getItem("users") || "[]")
 
-    if (!username || !password) {
+    if (!username || !password || !name || !phone || !passport || !age) {
       alert("ყველა ველი უნდა შეავსოთ")
       return
     }
@@ -112,12 +110,10 @@ export default function AuthModal({ onLogin }: { onLogin: (username: string) => 
       username,
       password,
       name,
-      surname,
       phone,
       passport,
       age,
-      birth,
-      balance: 200,
+      balance: 200, // ახალ ანგარიშზე 200 ლარი
     }
 
     users.push(newUser)
@@ -166,11 +162,9 @@ export default function AuthModal({ onLogin }: { onLogin: (username: string) => 
           {isRegister && (
             <>
               <Input type="text" placeholder="სახელი" value={name} onChange={(e) => setName(e.target.value)} />
-              <Input type="text" placeholder="გვარი" value={surname} onChange={(e) => setSurname(e.target.value)} />
               <Input type="text" placeholder="ტელეფონის ნომერი" value={phone} onChange={(e) => setPhone(e.target.value)} />
               <Input type="text" placeholder="პასპორტის კოდი" value={passport} onChange={(e) => setPassport(e.target.value)} />
               <Input type="number" placeholder="ასაკი" value={age} onChange={(e) => setAge(e.target.value)} />
-              <Input type="text" placeholder="დაბადების თარიღი (dd/mm/yyyy)" value={birth} onChange={(e) => setBirth(e.target.value)} />
             </>
           )}
 
