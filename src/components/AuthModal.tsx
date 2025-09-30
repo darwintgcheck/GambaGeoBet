@@ -1,13 +1,9 @@
-// src/components/AuthModal.tsx
 import React, { useState } from "react"
 import styled from "styled-components"
 
-const ModalBackground = styled.div`
+const Overlay = styled.div`
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   background: rgba(0, 0, 0, 0.85);
   display: flex;
   align-items: center;
@@ -15,77 +11,81 @@ const ModalBackground = styled.div`
   z-index: 2000;
 `
 
-const ModalBox = styled.div`
+const Modal = styled.div`
   background: #111;
-  border: 2px solid gold;
   padding: 30px;
   border-radius: 15px;
   width: 380px;
   text-align: center;
-  color: white;
-  font-family: "Arial", sans-serif;
-  box-shadow: 0 0 25px rgba(255, 215, 0, 0.4);
+  box-shadow: 0 0 20px rgba(0, 255, 200, 0.3);
 `
 
 const Title = styled.h2`
-  color: gold;
+  color: #ffffff;
   margin-bottom: 20px;
-  text-shadow: 0 0 10px gold, 0 0 20px #ffcc00;
+  font-size: 22px;
+  font-weight: bold;
+  text-shadow: 0 0 5px #00ffe7;
 `
 
 const Input = styled.input`
   width: 100%;
   padding: 12px;
-  margin: 8px 0;
-  background: black;
-  border: 1px solid gold;
+  margin: 6px 0;
   border-radius: 8px;
+  border: 1px solid #00ffe7;
+  background: #000;
   color: #fff;
-  font-size: 16px;
-  text-align: center;
-  text-shadow: 0 0 8px #fff, 0 0 15px #ffcc00;
+  font-size: 14px;
+  outline: none;
+  transition: 0.2s;
+
+  &::placeholder {
+    color: #aaa;
+  }
+
   &:focus {
-    outline: none;
-    box-shadow: 0 0 15px gold;
+    border-color: #0ff;
+    box-shadow: 0 0 8px #0ff;
   }
 `
 
 const Button = styled.button`
   width: 100%;
-  padding: 14px;
-  margin-top: 12px;
-  background: gold;
-  color: black;
-  font-weight: bold;
+  padding: 12px;
+  margin-top: 10px;
   border: none;
   border-radius: 8px;
+  background: linear-gradient(90deg, #00ffe7, #0088ff);
+  color: #000;
+  font-weight: bold;
   cursor: pointer;
   transition: 0.2s;
-  font-size: 16px;
+
   &:hover {
-    background: #ffcc00;
-    box-shadow: 0 0 15px gold;
+    opacity: 0.9;
+    transform: scale(1.02);
   }
 `
 
-const SwitchText = styled.p`
+const Switch = styled.p`
   margin-top: 15px;
+  color: #fff;
   font-size: 14px;
-  color: #ccc;
-  cursor: pointer;
-  &:hover {
-    color: gold;
-    text-shadow: 0 0 8px gold;
+
+  span {
+    color: #00ffe7;
+    cursor: pointer;
+    font-weight: bold;
   }
 `
 
 export default function AuthModal({ onLogin }: { onLogin: (username: string) => void }) {
-  const [isLogin, setIsLogin] = useState(true)
+  const [isRegister, setIsRegister] = useState(false)
+
+  // login və register üçün sahələr
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
-  const [message, setMessage] = useState("")
-
-  // qeydiyyat üçün əlavə sahələr
   const [name, setName] = useState("")
   const [surname, setSurname] = useState("")
   const [phone, setPhone] = useState("")
@@ -93,17 +93,16 @@ export default function AuthModal({ onLogin }: { onLogin: (username: string) => 
   const [age, setAge] = useState("")
   const [birth, setBirth] = useState("")
 
-  // Register funksiyası
   const handleRegister = () => {
+    const users = JSON.parse(localStorage.getItem("users") || "[]")
+
     if (!username || !password) {
-      setMessage("ყველა ველი შეავსეთ!")
+      alert("ყველა ველი უნდა შეავსოთ")
       return
     }
 
-    const users = JSON.parse(localStorage.getItem("users") || "[]")
-
     if (users.find((u: any) => u.username === username)) {
-      setMessage("ეს მომხმარებელი უკვე არსებობს!")
+      alert("მომხმარებლის სახელი უკვე არსებობს")
       return
     }
 
@@ -116,7 +115,7 @@ export default function AuthModal({ onLogin }: { onLogin: (username: string) => 
       passport,
       age,
       birth,
-      balance: 200, // 🎁 qeydiyyat bonusu
+      balance: 200,
     }
 
     users.push(newUser)
@@ -125,26 +124,29 @@ export default function AuthModal({ onLogin }: { onLogin: (username: string) => 
     onLogin(username)
   }
 
-  // Login funksiyası
   const handleLogin = () => {
     const users = JSON.parse(localStorage.getItem("users") || "[]")
-    const found = users.find((u: any) => u.username === username && u.password === password)
+    const user = users.find(
+      (u: any) => u.username === username && u.password === password
+    )
 
-    if (found) {
-      localStorage.setItem("currentUser", JSON.stringify(found))
+    if (user) {
+      localStorage.setItem("currentUser", JSON.stringify(user))
       onLogin(username)
     } else {
-      setMessage("მომხმარებელი ან პაროლი არასწორია")
+      alert("მომხმარებელი ან პაროლი არასწორია")
     }
   }
 
   return (
-    <ModalBackground>
-      <ModalBox>
-        <Title>{isLogin ? "ავტორიზაცია" : "რეგისტრაცია"}</Title>
+    <Overlay>
+      <Modal>
+        <Title>{isRegister ? "რეგისტრაცია ✨" : "შესვლა 🔑"}</Title>
 
+        {/* საერთო sahələr */}
         <Input
-          placeholder="მომხმარებელი"
+          type="text"
+          placeholder="მომხმარებლის სახელი"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
         />
@@ -155,29 +157,68 @@ export default function AuthModal({ onLogin }: { onLogin: (username: string) => 
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        {!isLogin && (
+        {/* მხოლოდ რეგისტრაციისას დამატებითი ველები */}
+        {isRegister && (
           <>
-            <Input placeholder="სახელი" value={name} onChange={(e) => setName(e.target.value)} />
-            <Input placeholder="გვარი" value={surname} onChange={(e) => setSurname(e.target.value)} />
-            <Input placeholder="ტელეფონი" value={phone} onChange={(e) => setPhone(e.target.value)} />
-            <Input placeholder="პასპორტის კოდი" value={passport} onChange={(e) => setPassport(e.target.value)} />
-            <Input placeholder="ასაკი" value={age} onChange={(e) => setAge(e.target.value)} />
-            <Input placeholder="დაბადების თარიღი (dd/mm/yyyy)" value={birth} onChange={(e) => setBirth(e.target.value)} />
+            <Input
+              type="text"
+              placeholder="სახელი"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <Input
+              type="text"
+              placeholder="გვარი"
+              value={surname}
+              onChange={(e) => setSurname(e.target.value)}
+            />
+            <Input
+              type="text"
+              placeholder="ტელეფონის ნომერი"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
+            <Input
+              type="text"
+              placeholder="პასპორტის კოდი"
+              value={passport}
+              onChange={(e) => setPassport(e.target.value)}
+            />
+            <Input
+              type="number"
+              placeholder="ასაკი"
+              value={age}
+              onChange={(e) => setAge(e.target.value)}
+            />
+            <Input
+              type="text"
+              placeholder="დაბადების თარიღი (dd/mm/yyyy)"
+              value={birth}
+              onChange={(e) => setBirth(e.target.value)}
+            />
           </>
         )}
 
-        {isLogin ? (
-          <Button onClick={handleLogin}>შესვლა</Button>
-        ) : (
+        {isRegister ? (
           <Button onClick={handleRegister}>რეგისტრაცია</Button>
+        ) : (
+          <Button onClick={handleLogin}>შესვლა</Button>
         )}
 
-        {message && <p style={{ color: "tomato", marginTop: "10px" }}>{message}</p>}
-
-        <SwitchText onClick={() => setIsLogin(!isLogin)}>
-          {isLogin ? "არ გაქვთ ანგარიში? რეგისტრაცია" : "უკვე გაქვთ ანგარიში? შესვლა"}
-        </SwitchText>
-      </ModalBox>
-    </ModalBackground>
+        <Switch>
+          {isRegister ? (
+            <>
+              უკვე გაქვთ ანგარიში?{" "}
+              <span onClick={() => setIsRegister(false)}>შესვლა</span>
+            </>
+          ) : (
+            <>
+              არ გაქვთ ანგარიში?{" "}
+              <span onClick={() => setIsRegister(true)}>რეგისტრაცია</span>
+            </>
+          )}
+        </Switch>
+      </Modal>
+    </Overlay>
   )
 }
