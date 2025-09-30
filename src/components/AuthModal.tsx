@@ -1,5 +1,6 @@
 import React, { useState } from "react"
 import styled from "styled-components"
+import { useUserStore } from "../hooks/useUserStore"
 
 const Overlay = styled.div`
   position: fixed;
@@ -83,21 +84,23 @@ const Switch = styled.p`
 export default function AuthModal({ onLogin }: { onLogin: (username: string) => void }) {
   const [isRegister, setIsRegister] = useState(false)
 
-  // login və register üçün sahələr
+  // sahələr
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [name, setName] = useState("")
+  const [surname, setSurname] = useState("")
   const [phone, setPhone] = useState("")
   const [passport, setPassport] = useState("")
   const [age, setAge] = useState("")
+  const [birth, setBirth] = useState("")
 
-  // ✅ Register
+  const setUser = useUserStore((state) => state.setUser)
+
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault()
-
     const users = JSON.parse(localStorage.getItem("users") || "[]")
 
-    if (!username || !password || !name || !passport || !phone || !age) {
+    if (!username || !password) {
       alert("ყველა ველი უნდა შეავსოთ")
       return
     }
@@ -107,35 +110,33 @@ export default function AuthModal({ onLogin }: { onLogin: (username: string) => 
       return
     }
 
-    // Yeni istifadəçi bonusla yaradılır
     const newUser = {
       username,
       password,
       name,
+      surname,
       phone,
       passport,
       age,
-      balance: 200, // ✅ პირველი რეგისტრაციაზე 200₾ ბონუსი
+      birth,
+      balance: 200, // 💰 საწყისი ბონუსი
     }
 
     users.push(newUser)
     localStorage.setItem("users", JSON.stringify(users))
-    localStorage.setItem("currentUser", JSON.stringify(newUser))
+    setUser(newUser) // ✅ həm store, həm localStorage update
     onLogin(username)
-    alert("რეგისტრაცია წარმატებით დასრულდა! 🎉 ბონუსი: 200₾")
   }
 
-  // ✅ Login
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
-
     const users = JSON.parse(localStorage.getItem("users") || "[]")
     const user = users.find(
-      (u: any) => u.username === username && u.password === password,
+      (u: any) => u.username === username && u.password === password
     )
 
     if (user) {
-      localStorage.setItem("currentUser", JSON.stringify(user))
+      setUser(user) // ✅ mövcud user yüklə
       onLogin(username)
     } else {
       alert("მომხმარებელი ან პაროლი არასწორია")
@@ -148,6 +149,7 @@ export default function AuthModal({ onLogin }: { onLogin: (username: string) => 
         <Title>{isRegister ? "რეგისტრაცია ✨" : "შესვლა 🔑"}</Title>
 
         <form onSubmit={isRegister ? handleRegister : handleLogin}>
+          {/* საერთო sahələr */}
           <Input
             type="text"
             placeholder="მომხმარებლის სახელი"
@@ -161,32 +163,15 @@ export default function AuthModal({ onLogin }: { onLogin: (username: string) => 
             onChange={(e) => setPassword(e.target.value)}
           />
 
+          {/* მხოლოდ რეგისტრაციისას */}
           {isRegister && (
             <>
-              <Input
-                type="text"
-                placeholder="სახელი"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-              <Input
-                type="text"
-                placeholder="ტელეფონის ნომერი"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-              <Input
-                type="text"
-                placeholder="პასპორტის კოდი"
-                value={passport}
-                onChange={(e) => setPassport(e.target.value)}
-              />
-              <Input
-                type="number"
-                placeholder="ასაკი"
-                value={age}
-                onChange={(e) => setAge(e.target.value)}
-              />
+              <Input type="text" placeholder="სახელი" value={name} onChange={(e) => setName(e.target.value)} />
+              <Input type="text" placeholder="გვარი" value={surname} onChange={(e) => setSurname(e.target.value)} />
+              <Input type="text" placeholder="ტელეფონის ნომერი" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <Input type="text" placeholder="პასპორტის კოდი" value={passport} onChange={(e) => setPassport(e.target.value)} />
+              <Input type="number" placeholder="ასაკი" value={age} onChange={(e) => setAge(e.target.value)} />
+              <Input type="text" placeholder="დაბადების თარიღი (dd/mm/yyyy)" value={birth} onChange={(e) => setBirth(e.target.value)} />
             </>
           )}
 
