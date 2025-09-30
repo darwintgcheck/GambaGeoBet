@@ -1,13 +1,13 @@
-import { BPS_PER_WHOLE } from 'gamba-core-v2'
-import { GambaUi, TokenValue, useCurrentPool, useSound, useWagerInput } from 'gamba-react-ui-v2'
-import { useGamba } from 'gamba-react-v2'
 import React from 'react'
+import { GambaUi, useSound } from 'gamba-react-ui-v2'
+import { BPS_PER_WHOLE } from 'gamba-core-v2'
 import { GRID_SIZE, MINE_SELECT, PITCH_INCREASE_FACTOR, SOUND_EXPLODE, SOUND_FINISH, SOUND_STEP, SOUND_TICK, SOUND_WIN } from './constants'
 import { CellButton, Container, Container2, Grid, Level, Levels, StatusBar } from './styles'
 import { generateGrid, revealAllMines, revealGold } from './utils'
+import { useUserStore } from '../hooks/useUserStore'
 
 function Mines() {
-  const game = GambaUi.useGame()
+  const { balance, updateBalance } = useUserStore()
   const sounds = useSound({
     tick: SOUND_TICK,
     win: SOUND_WIN,
@@ -15,7 +15,6 @@ function Mines() {
     step: SOUND_STEP,
     explode: SOUND_EXPLODE,
   })
-  const pool = useCurrentPool()
 
   const [grid, setGrid] = React.useState(generateGrid(GRID_SIZE))
   const [currentLevel, setLevel] = React.useState(0)
@@ -24,7 +23,7 @@ function Mines() {
   const [loading, setLoading] = React.useState(false)
   const [started, setStarted] = React.useState(false)
 
-  const [initialWager, setInitialWager] = useWagerInput()
+  const [initialWager, setInitialWager] = React.useState(10)
   const [mines, setMines] = React.useState(MINE_SELECT[2])
 
   const getMultiplierForLevel = (level: number) => {
@@ -32,29 +31,25 @@ function Mines() {
     return Number(BigInt(remainingCells * BPS_PER_WHOLE) / BigInt(remainingCells - mines)) / BPS_PER_WHOLE
   }
 
-  const levels = React.useMemo(
-    () => {
-      const totalLevels = GRID_SIZE - mines
-      let cumProfit = 0
-      let previousBalance = initialWager
+  const levels = React.useMemo(() => {
+    const totalLevels = GRID_SIZE - mines
+    let cumProfit = 0
+    let previousBalance = initialWager
 
-      return Array.from({ length: totalLevels }).map((_, level) => {
-        // For the first level, the wager is the initial wager. For subsequent levels, it's the previous balance.
-        const wager = level === 0 ? initialWager : previousBalance
-        const multiplier = getMultiplierForLevel(level)
-        const remainingCells = GRID_SIZE - level
-        const bet = Array.from({ length: remainingCells }, (_, i) => i < mines ? 0 : multiplier)
+    return Array.from({ length: totalLevels }).map((_, level) => {
+      const wager = level === 0 ? initialWager : previousBalance
+      const multiplier = getMultiplierForLevel(level)
+      const remainingCells = GRID_SIZE - level
+      const bet = Array.from({ length: remainingCells }, (_, i) => i < mines ? 0 : multiplier)
 
-        const profit = wager * (multiplier - 1)
-        cumProfit += profit
-        const balance = wager + profit
+      const profit = wager * (multiplier - 1)
+      cumProfit += profit
+      const balance = wager + profit
 
-        previousBalance = balance
-        return { bet, wager, profit, cumProfit, balance }
-      }).filter(x => Math.max(...x.bet) * x.wager < pool.maxPayout)
-    },
-    [initialWager, mines, pool.maxPayout],
-  )
+      previousBalance = balance
+      return { bet, wager, profit, cumProfit, balance }
+    })
+  }, [initialWager, mines])
 
   const remainingCells = GRID_SIZE - currentLevel
   const gameFinished = remainingCells <= mines
@@ -63,6 +58,8 @@ function Mines() {
   const { wager, bet } = levels[currentLevel] ?? {}
 
   const start = () => {
+    if (balance < initialWager) return
+    updateBalance(-initialWager)
     setGrid(generateGrid(GRID_SIZE))
     setLoading(false)
     setLevel(0)
@@ -70,7 +67,7 @@ function Mines() {
     setStarted(true)
   }
 
-  const endGame = async () => {
+  const endGame = () => {
     sounds.play('finish')
     reset()
   }
@@ -84,40 +81,38 @@ function Mines() {
   }
 
   const play = async (cellIndex: number) => {
+    if (!wager || balance < wager) return
     setLoading(true)
     setSelected(cellIndex)
     try {
       sounds.sounds.step.player.loop = true
-      sounds.play('step', {  })
+      sounds.play('step')
       sounds.sounds.tick.player.loop = true
-      sounds.play('tick', {  })
-      await game.play({
-        bet,
-        wager,
-        metadata: [currentLevel],
-      })
+      sounds.play('tick')
 
-      const result = await game.result()
+      const random = Math.random()
+      const isMine = random < mines / (GRID_SIZE - currentLevel)
 
       sounds.sounds.tick.player.stop()
 
-      // Lose
-      if (result.payout === 0) {
+      if (isMine) {
         setStarted(false)
         setGrid(revealAllMines(grid, cellIndex, mines))
         sounds.play('explode')
         return
       }
 
+      const profit = wager * (getMultiplierForLevel(currentLevel) - 1)
+      updateBalance(profit)
+
       const nextLevel = currentLevel + 1
       setLevel(nextLevel)
-      setGrid(revealGold(grid, cellIndex, result.profit))
-      setTotalGain(result.payout)
+      setGrid(revealGold(grid, cellIndex, profit))
+      setTotalGain(totalGain + profit)
 
       if (nextLevel < GRID_SIZE - mines) {
         sounds.play('win', { playbackRate: Math.pow(PITCH_INCREASE_FACTOR, currentLevel) })
       } else {
-        // No more squares
         sounds.play('win', { playbackRate: .9 })
         sounds.play('finish')
       }
@@ -134,28 +129,19 @@ function Mines() {
       <GambaUi.Portal target="screen">
         <Container2>
           <Levels>
-            {levels
-              .map(({ cumProfit }, i) => {
-                return (
-                  <Level key={i} $active={currentLevel === i}>
-                    <div>
-                      LEVEL {i + 1}
-                    </div>
-                    <div>
-                      <TokenValue amount={cumProfit} />
-                    </div>
-                  </Level>
-                )
-              })}
+            {levels.map(({ cumProfit }, i) => (
+              <Level key={i} $active={currentLevel === i}>
+                <div>LEVEL {i + 1}</div>
+                <div>{cumProfit.toFixed(2)} ₾</div>
+              </Level>
+            ))}
           </Levels>
           <StatusBar>
             <div>
-              <span>
-                Mines: {mines}
-              </span>
+              <span>Mines: {mines}</span>
               {totalGain > 0 && (
                 <span>
-                  +<TokenValue amount={totalGain} /> +{Math.round(totalGain / initialWager * 100 - 100)}%
+                  +{totalGain.toFixed(2)} ₾ +{Math.round(totalGain / initialWager * 100 - 100)}%
                 </span>
               )}
             </div>
@@ -173,7 +159,7 @@ function Mines() {
                   >
                     {(cell.status === 'gold') && (
                       <div>
-                        +<TokenValue amount={cell.profit} />
+                        +{cell.profit.toFixed(2)} ₾
                       </div>
                     )}
                   </CellButton>
@@ -191,9 +177,7 @@ function Mines() {
               options={MINE_SELECT}
               value={mines}
               onChange={setMines}
-              label={(mines) => (
-                <>{mines} Mines</>
-              )}
+              label={(mines) => <>{mines} Mines</>}
             />
             <GambaUi.PlayButton onClick={start}>
               Start
@@ -210,4 +194,3 @@ function Mines() {
 }
 
 export default Mines
-
