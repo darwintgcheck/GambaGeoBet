@@ -54,7 +54,13 @@ const Logo = styled(NavLink)`
   }
 `
 
-export default function Header({ openDeposit, openWithdraw }: { openDeposit?: () => void, openWithdraw?: () => void }) {
+export default function Header({
+  openDeposit,
+  openWithdraw,
+}: {
+  openDeposit?: () => void
+  openWithdraw?: () => void
+}) {
   const pool = useCurrentPool()
   const context = useGambaPlatformContext()
   const balance = useUserBalance()
@@ -64,14 +70,14 @@ export default function Header({ openDeposit, openWithdraw }: { openDeposit?: ()
   const [bonusHelp, setBonusHelp] = React.useState(false)
   const [jackpotHelp, setJackpotHelp] = React.useState(false)
   const [currentUser, setCurrentUser] = React.useState<any>(
-    JSON.parse(localStorage.getItem("currentUser") || "null")
+    JSON.parse(localStorage.getItem("currentUser") || "null"),
   )
   const [showAuth, setShowAuth] = React.useState(!currentUser)
 
   const handleLogout = () => {
     localStorage.removeItem("currentUser")
     setCurrentUser(null)
-    setShowAuth(true) // çıxışdan sonra login pəncərə açılır
+    setShowAuth(true)
   }
 
   return (
@@ -164,7 +170,11 @@ export default function Header({ openDeposit, openWithdraw }: { openDeposit?: ()
           <TokenSelect />
 
           {currentUser ? (
-            <GambaUi.Button onClick={handleLogout}>გამოსვლა</GambaUi.Button>
+            <>
+              <GambaUi.Button onClick={openDeposit}>Deposit</GambaUi.Button>
+              <GambaUi.Button onClick={openWithdraw}>Withdraw</GambaUi.Button>
+              <GambaUi.Button onClick={handleLogout}>LogOut</GambaUi.Button>
+            </>
           ) : null}
         </div>
       </StyledHeader>
