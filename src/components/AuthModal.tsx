@@ -93,7 +93,9 @@ export default function AuthModal({ onLogin }: { onLogin: (username: string) => 
   const [age, setAge] = useState("")
   const [birth, setBirth] = useState("")
 
-  const handleRegister = () => {
+  const handleRegister = (e: React.FormEvent) => {
+    e.preventDefault() // səhifənin yenilənməsinin qarşısını alır
+
     const users = JSON.parse(localStorage.getItem("users") || "[]")
 
     if (!username || !password) {
@@ -124,7 +126,9 @@ export default function AuthModal({ onLogin }: { onLogin: (username: string) => 
     onLogin(username)
   }
 
-  const handleLogin = () => {
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault()
+
     const users = JSON.parse(localStorage.getItem("users") || "[]")
     const user = users.find(
       (u: any) => u.username === username && u.password === password
@@ -143,67 +147,35 @@ export default function AuthModal({ onLogin }: { onLogin: (username: string) => 
       <Modal>
         <Title>{isRegister ? "რეგისტრაცია ✨" : "შესვლა 🔑"}</Title>
 
-        {/* საერთო sahələr */}
-        <Input
-          type="text"
-          placeholder="მომხმარებლის სახელი"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
-        <Input
-          type="password"
-          placeholder="პაროლი"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <form onSubmit={isRegister ? handleRegister : handleLogin}>
+          {/* საერთო sahələr */}
+          <Input
+            type="text"
+            placeholder="მომხმარებლის სახელი"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          <Input
+            type="password"
+            placeholder="პაროლი"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
 
-        {/* მხოლოდ რეგისტრაციისას დამატებითი ველები */}
-        {isRegister && (
-          <>
-            <Input
-              type="text"
-              placeholder="სახელი"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-            <Input
-              type="text"
-              placeholder="გვარი"
-              value={surname}
-              onChange={(e) => setSurname(e.target.value)}
-            />
-            <Input
-              type="text"
-              placeholder="ტელეფონის ნომერი"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
-            <Input
-              type="text"
-              placeholder="პასპორტის კოდი"
-              value={passport}
-              onChange={(e) => setPassport(e.target.value)}
-            />
-            <Input
-              type="number"
-              placeholder="ასაკი"
-              value={age}
-              onChange={(e) => setAge(e.target.value)}
-            />
-            <Input
-              type="text"
-              placeholder="დაბადების თარიღი (dd/mm/yyyy)"
-              value={birth}
-              onChange={(e) => setBirth(e.target.value)}
-            />
-          </>
-        )}
+          {/* მხოლოდ რეგისტრაციისას */}
+          {isRegister && (
+            <>
+              <Input type="text" placeholder="სახელი" value={name} onChange={(e) => setName(e.target.value)} />
+              <Input type="text" placeholder="გვარი" value={surname} onChange={(e) => setSurname(e.target.value)} />
+              <Input type="text" placeholder="ტელეფონის ნომერი" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <Input type="text" placeholder="პასპორტის კოდი" value={passport} onChange={(e) => setPassport(e.target.value)} />
+              <Input type="number" placeholder="ასაკი" value={age} onChange={(e) => setAge(e.target.value)} />
+              <Input type="text" placeholder="დაბადების თარიღი (dd/mm/yyyy)" value={birth} onChange={(e) => setBirth(e.target.value)} />
+            </>
+          )}
 
-        {isRegister ? (
-          <Button onClick={handleRegister}>რეგისტრაცია</Button>
-        ) : (
-          <Button onClick={handleLogin}>შესვლა</Button>
-        )}
+          <Button type="submit">{isRegister ? "რეგისტრაცია" : "შესვლა"}</Button>
+        </form>
 
         <Switch>
           {isRegister ? (
