@@ -1,183 +1,172 @@
-import React, { useState } from 'react'
-import styled from 'styled-components'
-import { Modal } from './Modal'
-import { GambaUi } from 'gamba-react-ui-v2'
-import { useUserStore } from '../hooks/useUserStore'
+import React, { useState } from "react"
+import styled from "styled-components"
+
+const ModalBackground = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+`
+
+const ModalBox = styled.div`
+  background: #111;
+  border: 2px solid gold;
+  padding: 30px;
+  border-radius: 15px;
+  width: 350px;
+  text-align: center;
+  color: white;
+  font-family: "Arial", sans-serif;
+`
 
 const Input = styled.input`
+  width: 100%;
   padding: 10px;
-  border: 2px solid #ffd700;
-  border-radius: 8px;
+  margin: 8px 0;
   background: black;
-  color: #ffffff;  /* Yazı tam ağ olacaq */
+  border: 1px solid gold;
+  border-radius: 8px;
+  color: #fff;
   font-size: 16px;
+  text-align: center;
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 10px gold;
+  }
+`
+
+const Button = styled.button`
+  width: 100%;
+  padding: 12px;
+  margin-top: 12px;
+  background: gold;
+  color: black;
   font-weight: bold;
-  outline: none;
-
-  /* Neon effekt yalnız border-də olsun */
-  box-shadow: 0 0 8px #ffd700, 0 0 16px #ffae00;
-
-  &::placeholder {
-    color: #aaaaaa;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.2s;
+  &:hover {
+    background: #ffcc00;
   }
 `
 
 const SwitchText = styled.p`
-  color: #ffd700;
-  margin-top: 10px;
-  text-align: center;
+  margin-top: 15px;
   font-size: 14px;
+  color: #ccc;
   cursor: pointer;
-  text-decoration: underline;
+  &:hover {
+    color: gold;
+  }
 `
 
-export default function AuthModal() {
-  const [isRegister, setIsRegister] = useState(false)
-  const [form, setForm] = useState({
-    username: '',
-    password: '',
-    displayName: '',
-    surname: '',
-    phone: '',
-    passport: '',
-    age: '',
-    birthday: '',
-  })
+export default function AuthModal({ onLogin }: { onLogin: (username: string) => void }) {
+  const [isLogin, setIsLogin] = useState(true)
+  const [username, setUsername] = useState("")
+  const [password, setPassword] = useState("")
+  const [message, setMessage] = useState("")
 
-  const setUser = useUserStore((state) => state.setUser)
-  const login = useUserStore((state) => state.login)
+  // qeydiyyat üçün əlavə sahələr
+  const [name, setName] = useState("")
+  const [surname, setSurname] = useState("")
+  const [phone, setPhone] = useState("")
+  const [passport, setPassport] = useState("")
+  const [age, setAge] = useState("")
+  const [birth, setBirth] = useState("")
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setForm((prev) => ({ ...prev, [name]: value }))
-  }
-
-  const handleLogin = () => {
-    const success = login(form.username, form.password)
-    if (!success) {
-      alert('❌ მომხმარებელი ან პაროლი არასწორია')
-    }
-  }
-
+  // Register funksiyası
   const handleRegister = () => {
-    if (
-      !form.username ||
-      !form.password ||
-      !form.displayName ||
-      !form.surname ||
-      !form.phone ||
-      !form.passport ||
-      !form.age ||
-      !form.birthday
-    ) {
-      alert('⚠️ გთხოვთ, შეავსოთ ყველა ველი')
+    if (!username || !password) {
+      setMessage("ყველა ველი შეავსეთ!")
       return
     }
 
-    setUser({
-      username: form.username,
-      password: form.password,
-      displayName: `${form.displayName} ${form.surname}`,
-      phone: form.phone,
-      passport: form.passport,
-      age: parseInt(form.age, 10),
-      birthday: form.birthday,
-    })
+    const users = JSON.parse(localStorage.getItem("users") || "[]")
 
-    alert(`🎉 რეგისტრაცია წარმატებულია, ბალანსზე დაემატა 200 ₾`)
+    // mövcud istifadəçi var?
+    if (users.find((u: any) => u.username === username)) {
+      setMessage("ეს მომხმარებელი უკვე არსებობს!")
+      return
+    }
+
+    const newUser = {
+      username,
+      password,
+      name,
+      surname,
+      phone,
+      passport,
+      age,
+      birth,
+      balance: 200, // qeydiyyat bonusu
+    }
+
+    users.push(newUser)
+    localStorage.setItem("users", JSON.stringify(users))
+    localStorage.setItem("currentUser", JSON.stringify(newUser))
+    onLogin(username)
+  }
+
+  // Login funksiyası
+  const handleLogin = () => {
+    const users = JSON.parse(localStorage.getItem("users") || "[]")
+    const found = users.find((u: any) => u.username === username && u.password === password)
+
+    if (found) {
+      localStorage.setItem("currentUser", JSON.stringify(found))
+      onLogin(username)
+    } else {
+      setMessage("მომხმარებელი ან პაროლი არასწორია")
+    }
   }
 
   return (
-    <Modal>
-      <h1 style={{ color: '#ffd700', textAlign: 'center' }}>
-        {isRegister ? 'რეგისტრაცია' : 'ავტორიზაცია'}
-      </h1>
+    <ModalBackground>
+      <ModalBox>
+        <h2>{isLogin ? "ავტორიზაცია" : "რეგისტრაცია"}</h2>
 
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '10px',
-          minWidth: '280px',
-        }}
-      >
-        {/* მხოლოდ რეგისტრაციისას */}
-        {isRegister && (
-          <>
-            <Input
-              type="text"
-              name="displayName"
-              placeholder="სახელი"
-              value={form.displayName}
-              onChange={handleChange}
-            />
-            <Input
-              type="text"
-              name="surname"
-              placeholder="გვარი"
-              value={form.surname}
-              onChange={handleChange}
-            />
-            <Input
-              type="tel"
-              name="phone"
-              placeholder="ტელეფონი"
-              value={form.phone}
-              onChange={handleChange}
-            />
-            <Input
-              type="text"
-              name="passport"
-              placeholder="პასპორტის კოდი"
-              value={form.passport}
-              onChange={handleChange}
-            />
-            <Input
-              type="number"
-              name="age"
-              placeholder="ასაკი"
-              value={form.age}
-              onChange={handleChange}
-            />
-            <Input
-              type="date"
-              name="birthday"
-              placeholder="დაბადების თარიღი"
-              value={form.birthday}
-              onChange={handleChange}
-            />
-          </>
-        )}
-
-        {/* login + register საერთო */}
         <Input
-          type="text"
-          name="username"
-          placeholder="მომხმარებლის სახელი"
-          value={form.username}
-          onChange={handleChange}
+          placeholder="მომხმარებელი"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
         />
         <Input
           type="password"
-          name="password"
           placeholder="პაროლი"
-          value={form.password}
-          onChange={handleChange}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
         />
 
-        <GambaUi.Button
-          main
-          onClick={isRegister ? handleRegister : handleLogin}
-        >
-          {isRegister ? 'რეგისტრაცია' : 'შესვლა'}
-        </GambaUi.Button>
+        {!isLogin && (
+          <>
+            <Input placeholder="სახელი" value={name} onChange={(e) => setName(e.target.value)} />
+            <Input placeholder="გვარი" value={surname} onChange={(e) => setSurname(e.target.value)} />
+            <Input placeholder="ტელეფონი" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <Input placeholder="პასპორტის კოდი" value={passport} onChange={(e) => setPassport(e.target.value)} />
+            <Input placeholder="ასაკი" value={age} onChange={(e) => setAge(e.target.value)} />
+            <Input placeholder="დაბადების თარიღი (dd/mm/yyyy)" value={birth} onChange={(e) => setBirth(e.target.value)} />
+          </>
+        )}
 
-        <SwitchText onClick={() => setIsRegister(!isRegister)}>
-          {isRegister
-            ? 'უკვე გაქვთ ანგარიში? შედით'
-            : 'ანგარიში არ გაქვთ? რეგისტრაცია'}
+        {isLogin ? (
+          <Button onClick={handleLogin}>შესვლა</Button>
+        ) : (
+          <Button onClick={handleRegister}>რეგისტრაცია</Button>
+        )}
+
+        {message && <p style={{ color: "tomato", marginTop: "10px" }}>{message}</p>}
+
+        <SwitchText onClick={() => setIsLogin(!isLogin)}>
+          {isLogin ? "არ გაქვთ ანგარიში? რეგისტრაცია" : "უკვე გაქვთ ანგარიში? შესვლა"}
         </SwitchText>
-      </div>
-    </Modal>
+      </ModalBox>
+    </ModalBackground>
   )
 }
