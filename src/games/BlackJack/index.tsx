@@ -1,19 +1,39 @@
-import { GambaUi, TokenValue, useCurrentPool, useSound, useWagerInput } from 'gamba-react-ui-v2'
-import { useGamba } from 'gamba-react-v2'
+// src/games/Blackjack.tsx
 import React from 'react'
-import { CARD_VALUES, RANKS, RANK_SYMBOLS, SUIT_COLORS, SUIT_SYMBOLS, SUITS, SOUND_CARD, SOUND_LOSE, SOUND_PLAY, SOUND_WIN, SOUND_JACKPOT } from './constants'
-import { Card, CardContainer, CardsContainer, Container, Profit, CardArea } from './styles'
+import { GambaUi, useSound, useWagerInput } from 'gamba-react-ui-v2'
+import { useUserStore } from '../hooks/useUserStore'
+import {
+  CARD_VALUES,
+  RANKS,
+  RANK_SYMBOLS,
+  SUIT_COLORS,
+  SUIT_SYMBOLS,
+  SUITS,
+  SOUND_CARD,
+  SOUND_LOSE,
+  SOUND_PLAY,
+  SOUND_WIN,
+  SOUND_JACKPOT,
+} from './constants'
+import {
+  Card,
+  CardContainer,
+  CardsContainer,
+  Container,
+  Profit,
+  CardArea,
+} from './styles'
 
 const randomRank = () => Math.floor(Math.random() * RANKS)
 const randomSuit = () => Math.floor(Math.random() * SUITS)
 
-const createCard = (rank = randomRank(), suit = randomSuit()): Card => ({
+const createCard = (rank = randomRank(), suit = randomSuit()): CardType => ({
   key: Math.random(),
   rank,
   suit,
 })
 
-interface Card {
+interface CardType {
   key: number
   rank: number
   suit: number
@@ -24,11 +44,9 @@ export interface BlackjackConfig {
 }
 
 export default function Blackjack(props: BlackjackConfig) {
-  const game = GambaUi.useGame()
-  const gamba = useGamba()
-  const pool = useCurrentPool()
-  const [playerCards, setPlayerCards] = React.useState<Card[]>([])
-  const [dealerCards, setDealerCards] = React.useState<Card[]>([])
+  const { balance, withdrawBalance, addBalance } = useUserStore()
+  const [playerCards, setPlayerCards] = React.useState<CardType[]>([])
+  const [dealerCards, setDealerCards] = React.useState<CardType[]>([])
   const [initialWager, setInitialWager] = useWagerInput()
   const [profit, setProfit] = React.useState<number | null>(null)
   const [claiming, setClaiming] = React.useState(false)
@@ -48,66 +66,64 @@ export default function Blackjack(props: BlackjackConfig) {
   }
 
   const play = async () => {
-    // Reset game state before playing
+    // balans yoxla
+    if (!withdrawBalance(initialWager)) {
+      alert('Balansınız kifayət etmir!')
+      return
+    }
+
     resetGame()
     sounds.play('play')
 
-    const betArray = [2.5, 2.5, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0] 
+    // payout ehtimalları
+    const betArray = [2.5, 2.5, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    const rand = Math.floor(Math.random() * betArray.length)
+    const payoutMultiplier = betArray[rand]
 
-    await game.play({
-      bet: betArray,
-      wager: initialWager,
-    })
-
-    const result = await game.result()
-    const payoutMultiplier = result.payout / initialWager
-
-    let newPlayerCards: Card[] = []
-    let newDealerCards: Card[] = []
+    let newPlayerCards: CardType[] = []
+    let newDealerCards: CardType[] = []
 
     if (payoutMultiplier === 2.5) {
-      // Player got blackjack
       newPlayerCards = generateBlackjackHand()
       newDealerCards = generateRandomHandBelow(21)
     } else if (payoutMultiplier === 2) {
-      // Player wins normally
       newPlayerCards = generateWinningHand()
       newDealerCards = generateLosingHand(newPlayerCards)
     } else {
-      // Player loses
       newPlayerCards = generateLosingHand()
       newDealerCards = generateWinningHandOver(newPlayerCards)
     }
 
-    // Function to deal cards one by one
+    // kartları tək-tək göstər
     const dealCards = async () => {
       for (let i = 0; i < 2; i++) {
-        // Deal to player
         if (i < newPlayerCards.length) {
-          setPlayerCards(prev => [...prev, newPlayerCards[i]])
+          setPlayerCards((prev) => [...prev, newPlayerCards[i]])
           sounds.play('card')
-          await new Promise(resolve => setTimeout(resolve, 500)) // Wait 500ms
+          await new Promise((resolve) => setTimeout(resolve, 500))
         }
-        // After dealing player's second card, check for blackjack and play sound
         if (i === 1 && payoutMultiplier === 2.5) {
-          sounds.play('jackpot') // Play jackpot sound for blackjack immediately
+          sounds.play('jackpot')
         }
-        // Deal to dealer
         if (i < newDealerCards.length) {
-          setDealerCards(prev => [...prev, newDealerCards[i]])
+          setDealerCards((prev) => [...prev, newDealerCards[i]])
           sounds.play('card')
-          await new Promise(resolve => setTimeout(resolve, 500)) // Wait 500ms
+          await new Promise((resolve) => setTimeout(resolve, 500))
         }
       }
     }
 
     await dealCards()
 
-    setProfit(result.payout)
+    const payout = initialWager * payoutMultiplier
+    if (payout > 0) {
+      addBalance(payout)
+    }
 
-    // Play the appropriate sound based on the result
+    setProfit(payout)
+
     if (payoutMultiplier === 2.5) {
-      // Do nothing; jackpot sound already played
+      // blackjack jackpot
     } else if (payoutMultiplier > 0) {
       sounds.play('win')
     } else {
@@ -115,19 +131,19 @@ export default function Blackjack(props: BlackjackConfig) {
     }
   }
 
-  // Helper functions remain the same
-  const getHandValue = (hand: Card[]): number => {
+  // köməkçi funksiyalar
+  const getHandValue = (hand: CardType[]): number => {
     return hand.reduce((sum, c) => sum + CARD_VALUES[c.rank], 0)
   }
 
-  const generateBlackjackHand = (): Card[] => {
+  const generateBlackjackHand = (): CardType[] => {
     const aceRank = 12
-    const tenRanks = [8, 9, 10, 11] // Ranks corresponding to 10-value cards
+    const tenRanks = [8, 9, 10, 11]
     const tenCardRank = tenRanks[Math.floor(Math.random() * tenRanks.length)]
     return [createCard(aceRank, randomSuit()), createCard(tenCardRank, randomSuit())]
   }
 
-  const generateRandomHandBelow = (maxTotal: number): Card[] => {
+  const generateRandomHandBelow = (maxTotal: number): CardType[] => {
     let handValue = maxTotal
     while (handValue >= maxTotal) {
       const card1 = createCard()
@@ -140,13 +156,13 @@ export default function Blackjack(props: BlackjackConfig) {
     return []
   }
 
-  const generateWinningHand = (): Card[] => {
+  const generateWinningHand = (): CardType[] => {
     const totals = [17, 18, 19, 20]
     const targetTotal = totals[Math.floor(Math.random() * totals.length)]
     return generateHandWithTotal(targetTotal)
   }
 
-  const generateLosingHand = (opponentHand?: Card[]): Card[] => {
+  const generateLosingHand = (opponentHand?: CardType[]): CardType[] => {
     const opponentTotal = opponentHand ? getHandValue(opponentHand) : 20
     let total = opponentTotal
     while (total >= opponentTotal) {
@@ -159,7 +175,7 @@ export default function Blackjack(props: BlackjackConfig) {
     return []
   }
 
-  const generateWinningHandOver = (opponentHand: Card[]): Card[] => {
+  const generateWinningHandOver = (opponentHand: CardType[]): CardType[] => {
     const opponentTotal = getHandValue(opponentHand)
     let total = opponentTotal
     while (total <= opponentTotal || total > 21) {
@@ -172,7 +188,7 @@ export default function Blackjack(props: BlackjackConfig) {
     return []
   }
 
-  const generateHandWithTotal = (targetTotal: number): Card[] => {
+  const generateHandWithTotal = (targetTotal: number): CardType[] => {
     for (let i = 0; i < 100; i++) {
       const card1 = createCard()
       const card2 = createCard()
@@ -187,9 +203,9 @@ export default function Blackjack(props: BlackjackConfig) {
     <>
       <GambaUi.Portal target="screen">
         <GambaUi.Responsive>
-          <Container $disabled={claiming || gamba.isPlaying}>
+          <Container $disabled={claiming}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <h2>Dealer's Hand</h2>
+              <h2>Dealer&apos;s Hand</h2>
               <CardArea>
                 <CardsContainer>
                   {dealerCards.map((card) => (
@@ -202,7 +218,8 @@ export default function Blackjack(props: BlackjackConfig) {
                   ))}
                 </CardsContainer>
               </CardArea>
-              <h2>Player's Hand</h2>
+
+              <h2>Player&apos;s Hand</h2>
               <CardArea>
                 <CardsContainer>
                   {playerCards.map((card) => (
@@ -215,12 +232,11 @@ export default function Blackjack(props: BlackjackConfig) {
                   ))}
                 </CardsContainer>
               </CardArea>
+
               {profit !== null && (
                 <Profit key={profit}>
                   {profit > 0 ? (
-                    <>
-                      <TokenValue amount={profit} /> +{Math.round((profit / initialWager) * 100 - 100)}%
-                    </>
+                    <>₾ {profit} (+{Math.round((profit / initialWager) * 100 - 100)}%)</>
                   ) : (
                     <>You Lost</>
                   )}
@@ -230,6 +246,7 @@ export default function Blackjack(props: BlackjackConfig) {
           </Container>
         </GambaUi.Responsive>
       </GambaUi.Portal>
+
       <GambaUi.Portal target="controls">
         <>
           <GambaUi.WagerInput value={initialWager} onChange={setInitialWager} />
