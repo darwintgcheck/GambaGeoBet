@@ -1,72 +1,173 @@
 // src/sections/Header.tsx
-import React from 'react'
-import styled from 'styled-components'
-import { useUserStore } from '../hooks/useUserStore'
-import { GambaUi } from 'gamba-react-ui-v2'
-import { NavLink } from 'react-router-dom'
+import {
+  GambaUi,
+  TokenValue,
+  useCurrentPool,
+  useGambaPlatformContext,
+  useUserBalance,
+} from "gamba-react-ui-v2"
+import React from "react"
+import { NavLink } from "react-router-dom"
+import styled from "styled-components"
+import { Modal } from "../components/Modal"
+import LeaderboardsModal from "../sections/LeaderBoard/LeaderboardsModal"
+import { PLATFORM_JACKPOT_FEE, PLATFORM_CREATOR_ADDRESS } from "../constants"
+import { useMediaQuery } from "../hooks/useMediaQuery"
+import TokenSelect from "./TokenSelect"
+import { ENABLE_LEADERBOARD } from "../constants"
+import AuthModal from "../components/AuthModal"
 
-const StyledHeader = styled.header`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 24px;
-  background: #111;
-  color: #fff;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.6);
-`
-
-const Logo = styled(NavLink)`
-  font-size: 22px;
+const Bonus = styled.button`
+  all: unset;
+  cursor: pointer;
+  color: #ffe42d;
+  border-radius: 10px;
+  padding: 2px 10px;
+  font-size: 12px;
+  text-transform: uppercase;
   font-weight: bold;
-  color: #facc15;
-  text-decoration: none;
+  transition: background-color 0.2s;
   &:hover {
-    color: #fde047;
+    background: white;
   }
 `
 
-const RightSection = styled.div`
+const StyledHeader = styled.div`
   display: flex;
-  gap: 12px;
   align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px;
+  background: #000000cc;
+  backdrop-filter: blur(20px);
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
 `
 
-const BalanceBox = styled.div`
-  background: #222;
-  padding: 6px 14px;
-  border-radius: 8px;
-  font-weight: bold;
-  font-size: 15px;
+const Logo = styled(NavLink)`
+  height: 35px;
+  margin: 0 15px;
+  & > img {
+    height: 120%;
+  }
 `
 
-export default function Header({
-  openDeposit,
-  openWithdraw,
-}: {
-  openDeposit: () => void
-  openWithdraw: () => void
-}) {
-  const user = useUserStore((state) => state.username)
-  const balance = useUserStore((state) => state.balance)
-  const logout = useUserStore((state) => state.logout)
+export default function Header({ openDeposit, openWithdraw }: { openDeposit?: () => void, openWithdraw?: () => void }) {
+  const pool = useCurrentPool()
+  const context = useGambaPlatformContext()
+  const balance = useUserBalance()
+  const isDesktop = useMediaQuery("lg")
+
+  const [showLeaderboard, setShowLeaderboard] = React.useState(false)
+  const [bonusHelp, setBonusHelp] = React.useState(false)
+  const [jackpotHelp, setJackpotHelp] = React.useState(false)
+  const [currentUser, setCurrentUser] = React.useState<any>(
+    JSON.parse(localStorage.getItem("currentUser") || "null")
+  )
+  const [showAuth, setShowAuth] = React.useState(!currentUser)
+
+  const handleLogout = () => {
+    localStorage.removeItem("currentUser")
+    setCurrentUser(null)
+    setShowAuth(true) // çıxışdan sonra login pəncərə açılır
+  }
 
   return (
-    <StyledHeader>
-      <Logo to="/">🎰 GeoCasino</Logo>
-
-      {user && (
-        <RightSection>
-          <BalanceBox> {balance} ₾</BalanceBox>
-          <GambaUi.Button onClick={openDeposit}>დეპოზიტი</GambaUi.Button>
-          <GambaUi.Button onClick={openWithdraw}>გატანა</GambaUi.Button>
-          <GambaUi.Button onClick={() => logout()}>🚪 გამოსვლა</GambaUi.Button>
-        </RightSection>
+    <>
+      {showAuth && (
+        <AuthModal
+          onLogin={(username) => {
+            const user = JSON.parse(localStorage.getItem("currentUser") || "null")
+            setCurrentUser(user)
+            setShowAuth(false)
+          }}
+        />
       )}
-    </StyledHeader>
+
+      {bonusHelp && (
+        <Modal onClose={() => setBonusHelp(false)}>
+          <h1>Bonus ✨</h1>
+          <p>
+            თქვენ გაქვთ{" "}
+            <b>
+              <TokenValue amount={balance.bonusBalance} />
+            </b>{" "}
+            უფასო თამაშის ბალანსი.
+          </p>
+        </Modal>
+      )}
+
+      {jackpotHelp && (
+        <Modal onClose={() => setJackpotHelp(false)}>
+          <h1>Jackpot 💰</h1>
+          <p style={{ fontWeight: "bold" }}>
+            ჯეკპოტშია <TokenValue amount={pool.jackpotBalance} />
+          </p>
+          <p>
+            ჯეკპოტი იზრდება თითოეული ფსონისას. გამარჯვების შემდეგ თავიდან
+            იწყება.
+          </p>
+          <label style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            {context.defaultJackpotFee === 0 ? "გამორთულია" : "ჩართულია"}
+            <GambaUi.Switch
+              checked={context.defaultJackpotFee > 0}
+              onChange={(checked) =>
+                context.setDefaultJackpotFee(checked ? PLATFORM_JACKPOT_FEE : 0)
+              }
+            />
+          </label>
+        </Modal>
+      )}
+
+      {ENABLE_LEADERBOARD && showLeaderboard && (
+        <LeaderboardsModal
+          creator={PLATFORM_CREATOR_ADDRESS.toBase58()}
+          onClose={() => setShowLeaderboard(false)}
+        />
+      )}
+
+      <StyledHeader>
+        <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
+          <Logo to="/">
+            <img alt="Gamba logo" src="/logo.svg" />
+          </Logo>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: "10px",
+            alignItems: "center",
+            position: "relative",
+          }}
+        >
+          {pool.jackpotBalance > 0 && (
+            <Bonus onClick={() => setJackpotHelp(true)}>
+              💰 <TokenValue amount={pool.jackpotBalance} />
+            </Bonus>
+          )}
+
+          {balance.bonusBalance > 0 && (
+            <Bonus onClick={() => setBonusHelp(true)}>
+              ✨ <TokenValue amount={balance.bonusBalance} />
+            </Bonus>
+          )}
+
+          {isDesktop && (
+            <GambaUi.Button onClick={() => setShowLeaderboard(true)}>
+              ლიდერბორდი
+            </GambaUi.Button>
+          )}
+
+          <TokenSelect />
+
+          {currentUser ? (
+            <GambaUi.Button onClick={handleLogout}>გამოსვლა</GambaUi.Button>
+          ) : null}
+        </div>
+      </StyledHeader>
+    </>
   )
 }
