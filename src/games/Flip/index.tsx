@@ -1,25 +1,24 @@
 import { Canvas } from '@react-three/fiber'
 import { GambaUi, useSound } from 'gamba-react-ui-v2'
-import { useGamba } from 'gamba-react-v2'
 import React from 'react'
 import { Coin, TEXTURE_HEADS, TEXTURE_TAILS } from './Coin'
 import { Effect } from './Effect'
+import { useUserStore } from '../hooks/useUserStore'
 
 import SOUND_COIN from './coin.mp3'
 import SOUND_LOSE from './lose.mp3'
 import SOUND_WIN from './win.mp3'
 
 const SIDES = {
-  heads: [2, 0],
-  tails: [0, 2],
+  heads: 0,
+  tails: 1,
 }
 const WAGER_OPTIONS = [1, 5, 10, 50, 100]
 
 type Side = keyof typeof SIDES
 
 function Flip() {
-  const game = GambaUi.useGame()
-  const gamba = useGamba()
+  const { balance, withdrawBalance, addBalance } = useUserStore()
   const [flipping, setFlipping] = React.useState(false)
   const [win, setWin] = React.useState(false)
   const [resultIndex, setResultIndex] = React.useState(0)
@@ -33,31 +32,32 @@ function Flip() {
   })
 
   const play = async () => {
+    if (balance < wager) {
+      alert('Balans kifayət etmir!')
+      return
+    }
+
     try {
       setWin(false)
       setFlipping(true)
+      sounds.play('coin', { playbackRate: 0.5 })
 
-      sounds.play('coin', { playbackRate: .5 })
+      // Mərc çıxılır
+      withdrawBalance(wager)
 
-      await game.play({
-        bet: SIDES[side],
-        wager,
-        metadata: [side],
-      })
+      // Random nəticə (0 = heads, 1 = tails)
+      const result = Math.random() < 0.5 ? 0 : 1
+      setResultIndex(result)
 
-      sounds.play('coin')
+      const didWin = (side === 'heads' && result === 0) || (side === 'tails' && result === 1)
 
-      const result = await game.result()
-
-      const win = result.payout > 0
-
-      setResultIndex(result.resultIndex)
-
-      setWin(win)
-
-      if (win) {
+      if (didWin) {
+        const payout = wager * 2
+        addBalance(payout)
+        setWin(true)
         sounds.play('win')
       } else {
+        setWin(false)
         sounds.play('lose')
       }
     } finally {
@@ -92,7 +92,7 @@ function Flip() {
             color="#CCCCCC"
           />
           <hemisphereLight
-            intensity={.5}
+            intensity={0.5}
             position={[0, 1, 0]}
             scale={[1, 1, 1]}
             color="#ffadad"
@@ -106,10 +106,15 @@ function Flip() {
           value={wager}
           onChange={setWager}
         />
-        <GambaUi.Button disabled={gamba.isPlaying} onClick={() => setSide(side === 'heads' ? 'tails' : 'heads')}>
+        <GambaUi.Button
+          onClick={() => setSide(side === 'heads' ? 'tails' : 'heads')}
+        >
           <div style={{ display: 'flex' }}>
-            <img height="20px" src={side === 'heads' ? TEXTURE_HEADS : TEXTURE_TAILS} />
-            {side === 'heads' ? 'Heads' : 'Tails' }
+            <img
+              height="20px"
+              src={side === 'heads' ? TEXTURE_HEADS : TEXTURE_TAILS}
+            />
+            {side === 'heads' ? 'Heads' : 'Tails'}
           </div>
         </GambaUi.Button>
         <GambaUi.PlayButton onClick={play}>
